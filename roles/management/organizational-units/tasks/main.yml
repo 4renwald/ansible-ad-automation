@@ -1,0 +1,43 @@
+---
+- name: OU creation tasks
+  become: false
+
+  block:
+    - name: Validate required OU creation parameters
+      ansible.builtin.assert:
+        that:
+          - target_domain_name is defined
+          - target_domain_name | length > 0
+        fail_msg: |
+          OU creation validation failed:
+          - target_domain_name must be defined and non-empty (current: {{ target_domain_name | default('undefined') }})
+        success_msg: "OU creation parameters validated successfully"
+
+    - name: Create OUs from provided structure
+      microsoft.ad.ou:
+        name: "{{ ou.name }}"
+        description: "{{ ou.description }}"
+        protect_from_deletion: "{{ ou.protect_from_deletion }}"
+        path: "{{ ou.path }}"
+      loop: "{{ ou_structure }}"
+      loop_control:
+        loop_var: ou
+      vars:
+        ou_structure: "{{ lookup('template', 'ous_structure.j2') }}"
+
+  rescue:
+    - name: Log OU creation error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ Organizational Unit Creation Failed
+          Host: {{ inventory_hostname }}
+          Domain: {{ target_domain_name }}
+          {% if ou is defined %}
+          Failed OU: {{ ou.name | default('Unknown') }}
+          OU Path: {{ ou.path | default('Unknown') }}
+          {% endif %}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail OU creation with context
+      ansible.builtin.fail:
+        msg: "OU creation failed on {{ inventory_hostname }} for domain {{ target_domain_name }}: {{ ansible_failed_result.msg | default('Unknown error') }}"

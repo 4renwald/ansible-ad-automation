@@ -1,0 +1,33 @@
+---
+# NIC Configuration Default Variables
+# Purpose: Configure network adapter DNS settings for servers
+#
+# Variables can be overridden in:
+#   - group_vars/ (recommended)
+#   - Playbook vars
+#   - host_vars/
+
+# Network Adapter Configuration
+# Use '*' for all adapters or specify adapter name (e.g., 'Ethernet')
+target_domain_nic: "*"
+
+# DNS Server Addresses
+# List of DNS server IP addresses to configure on the NIC
+# Example:
+#   dns_servers:
+#     - "192.168.1.10"
+#     - "192.168.1.11"
+#     - "8.8.8.8"
+dns_servers: []
+
+# Validation Configuration
+validate_dns_config: true
+
+# DNS Query Timeout (seconds)
+dns_query_timeout: 5
+
+# Maximum retry attempts for DNS validation
+dns_validation_retries: 3
+
+# Delay between retry attempts (seconds)
+dns_validation_delay: 5

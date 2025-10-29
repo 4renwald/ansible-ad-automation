@@ -1,0 +1,7 @@
+---
+# Domain-Specific Variables: adlab.local
+# Scope: All hosts in adlab.local domain
+# Purpose: Domain configuration and HashiCorp Vault connection settings
+
+# Domain Configuration
+target_domain_name: adlab.local

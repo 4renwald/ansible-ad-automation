@@ -1,0 +1,9 @@
+---
+# DNS Forwarders Shared Role Defaults
+# Purpose: Configure DNS forwarders on domain controllers
+
+# DNS forwarders list - should be overridden in group_vars/domain_controllers/main.yml
+# This is just a fallback default
+dns_forwarders:
+  - "1.1.1.1"
+  - "1.1.1.3"

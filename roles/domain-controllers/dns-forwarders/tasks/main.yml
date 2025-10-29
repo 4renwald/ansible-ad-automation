@@ -1,0 +1,57 @@
+---
+- name: DNS forwarders configuration
+  become: false
+
+  block:
+    - name: Validate DNS forwarders are defined
+      ansible.builtin.assert:
+        that:
+          - dns_forwarders is defined
+          - dns_forwarders | length > 0
+        fail_msg: "dns_forwarders must be defined and contain at least one IP address"
+        success_msg: "DNS forwarders validated: {{ dns_forwarders | join(', ') }}"
+
+    - name: Configure DNS forwarders for external resolution
+      ansible.windows.win_powershell:
+        script: |
+          try {
+            # Configure DNS forwarders
+            $forwarders = @('{{ dns_forwarders | join("', '") }}')
+
+            $existingForwarders = Get-DnsServerForwarder
+            if ($existingForwarders.IPAddress -and $existingForwarders.IPAddress.Count -gt 0) {
+              Remove-DnsServerForwarder -IPAddress $existingForwarders.IPAddress -Force -ErrorAction SilentlyContinue
+            }
+
+            foreach ($forwarder in $forwarders) {
+              Add-DnsServerForwarder -IPAddress $forwarder -PassThru
+            }
+
+            Write-Output "DNS forwarders configured successfully"
+            Get-DnsServerForwarder | ForEach-Object { Write-Output "  - $($_.IPAddress)" }
+
+            $Ansible.Changed = $true
+          } catch {
+            Write-Error "Failed to configure DNS forwarders: $($_.Exception.Message)"
+            $Ansible.Failed = $true
+            exit 1
+          }
+      register: dns_forwarders_config
+
+    - name: Display DNS forwarders configuration
+      ansible.builtin.debug:
+        var: dns_forwarders_config.output
+
+  rescue:
+    - name: Log DNS forwarders error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ DNS Forwarders Configuration Failed
+          Host: {{ inventory_hostname }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail DNS forwarders configuration with context
+      ansible.builtin.fail:
+        msg: |
+          DNS forwarders configuration failed on {{ inventory_hostname }}.
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}

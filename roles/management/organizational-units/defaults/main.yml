@@ -1,0 +1,9 @@
+---
+# Default domain configuration for OU creation
+# This should be overridden with the actual domain name passed from the pipeline
+target_domain_name: "adtest.local"
+
+# Dynamic DC path construction from domain name
+# Splits domain by dots and creates DC components
+# Example: "coreaddev.npr.int.bnc.ca" becomes "DC=coreaddev,DC=npr,DC=int,DC=bnc,DC=ca"
+domain_dc_path: "{% for part in target_domain_name.split('.') %}DC={{ part }}{% if not loop.last %},{% endif %}{% endfor %}"

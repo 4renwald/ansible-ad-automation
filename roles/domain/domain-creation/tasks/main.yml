@@ -1,0 +1,66 @@
+---
+- name: Domain creation tasks
+  become: false
+
+  block:
+    - name: Validate required domain creation parameters
+      ansible.builtin.assert:
+        that:
+          # Required parameters
+          - target_domain_name is defined
+          - target_domain_name | length > 0
+          - domain_netbios_name is defined
+          - domain_netbios_name | length > 0
+          - domain_netbios_name | length <= 15
+          - dsrm_password is defined
+          - dsrm_password | length >= 8
+          # Optional parameters with defaults (validate they exist and are valid)
+          - ad_database_path is defined
+          - ad_database_path | length > 0
+          - ad_database_path is match('^[A-Za-z]:\\\\.*')
+          - ad_sysvol_path is defined
+          - ad_sysvol_path | length > 0
+          - ad_sysvol_path is match('^[A-Za-z]:\\\\.*')
+          - domain_mode is defined
+          - domain_mode | length > 0
+          - domain_mode in ['Win2008', 'Win2008R2', 'Win2012', 'Win2012R2', 'WinThreshold']
+          - forest_mode is defined
+          - forest_mode | length > 0
+          - forest_mode in ['Win2008', 'Win2008R2', 'Win2012', 'Win2012R2', 'WinThreshold']
+          - create_dns_delegation is defined
+          - create_dns_delegation is boolean
+          - install_dns is defined
+          - install_dns is boolean
+        fail_msg: |
+          Domain creation validation failed. Check parameters:
+          - target_domain_name: {{ target_domain_name | default('NOT DEFINED') }}
+          - domain_netbios_name: {{ domain_netbios_name | default('NOT DEFINED') }} (max 15 chars)
+          - dsrm_password: {{ '***DEFINED***' if dsrm_password is defined else 'NOT DEFINED' }} (min 8 chars)
+          - ad_database_path: {{ ad_database_path | default('NOT DEFINED') }} (must be Windows path)
+          - ad_sysvol_path: {{ ad_sysvol_path | default('NOT DEFINED') }} (must be Windows path)
+          - domain_mode: {{ domain_mode | default('NOT DEFINED') }} (must be valid functional level)
+          - forest_mode: {{ forest_mode | default('NOT DEFINED') }} (must be valid functional level)
+          - create_dns_delegation: {{ create_dns_delegation | default('NOT DEFINED') }} (must be boolean)
+          - install_dns: {{ install_dns | default('NOT DEFINED') }} (must be boolean)
+        success_msg: "Domain creation parameters validated successfully"
+
+    - name: Create Active Directory domain
+      ansible.builtin.include_tasks: create-domain.yml
+
+    - name: Post-creation validation
+      ansible.builtin.include_tasks: validate-domain.yml
+
+  rescue:
+    - name: Log domain creation error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ Active Directory Domain Creation Failed
+          Host: {{ inventory_hostname }}
+          Domain: {{ target_domain_name }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail domain creation with context
+      ansible.builtin.fail:
+        msg: |
+          AD domain creation failed on {{ inventory_hostname }} for domain {{ target_domain_name }}.
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}

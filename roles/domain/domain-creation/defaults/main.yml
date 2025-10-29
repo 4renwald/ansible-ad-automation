@@ -1,0 +1,21 @@
+---
+# Domain creation default variables
+
+# Domain configuration
+# Full domain name (FQDN) - typically overridden in inventory/group_vars/all/00-global.yml
+target_domain_name: "adlab.local"
+
+# Active Directory paths
+ad_database_path: "C:\\Windows\\NTDS"
+ad_sysvol_path: "C:\\Windows\\SYSVOL"
+
+# Domain and forest functional levels
+domain_mode: "WinThreshold" # Windows Server 2016+
+forest_mode: "WinThreshold" # Windows Server 2016+
+
+# DNS configuration
+create_dns_delegation: false
+install_dns: true
+
+# Required variables (must be provided via AAP survey or variables)
+dsrm_password: "{{ lookup('community.general.random_string', length=24, min_lower=1, min_upper=1, min_numeric=1, min_special=1, override_special='-_=+!#$()[]') }}" # Directory Services Restore Mode password

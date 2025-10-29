@@ -1,0 +1,27 @@
+---
+# Domain controller promotion
+# Promotes a server to a domain controller in an existing domain
+
+- name: Promote server to domain controller
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Install required Windows features for domain controller
+      ansible.builtin.include_role:
+        name: shared/windows-features
+      vars:
+        windows_features_to_install:
+          - AD-Domain-Services
+          - RSAT-AD-Tools
+          - RSAT-AD-PowerShell
+          - RSAT-ADDS
+          - RSAT-DFS-Mgmt-Con
+
+    - name: Promote server to domain controller
+      ansible.builtin.include_role:
+        name: domain-controllers/dc-promotion
+
+    - name: Configure DNS forwarders on new domain controller
+      ansible.builtin.include_role:
+        name: domain-controllers/dns-forwarders

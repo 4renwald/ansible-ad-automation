@@ -1,0 +1,57 @@
+---
+# Validate that DNS client configuration was applied correctly
+
+- name: Get current DNS configuration from network adapter
+  ansible.windows.win_powershell:
+    script: |
+      try {
+        $adapter = "{{ target_domain_nic }}"
+
+        if ($adapter -eq "*") {
+          # Get all adapters
+          $dnsServers = Get-DnsClientServerAddress -AddressFamily IPv4 |
+            Where-Object { $_.ServerAddresses.Count -gt 0 } |
+            Select-Object -ExpandProperty ServerAddresses
+        } else {
+          # Get specific adapter
+          $dnsServers = Get-DnsClientServerAddress -InterfaceAlias $adapter -AddressFamily IPv4 |
+            Select-Object -ExpandProperty ServerAddresses
+        }
+
+        @{
+          Success = $true
+          DnsServers = $dnsServers
+        } | ConvertTo-Json
+      } catch {
+        @{
+          Success = $false
+          Error = $_.Exception.Message
+        } | ConvertTo-Json
+      }
+  register: current_dns_config
+
+- name: Parse DNS configuration result
+  ansible.builtin.set_fact:
+    dns_config_result: "{{ current_dns_config.output[0] | from_json }}"
+
+- name: Display current DNS configuration
+  ansible.builtin.debug:
+    msg: |
+      Current DNS Configuration:
+      {% if dns_config_result.Success %}
+      Configured DNS servers: {{ dns_config_result.DnsServers | join(', ') }}
+      Expected DNS servers: {{ dns_servers | join(', ') }}
+      {% else %}
+      Error retrieving DNS configuration: {{ dns_config_result.Error }}
+      {% endif %}
+
+- name: Verify DNS servers match expected configuration
+  ansible.builtin.assert:
+    that:
+      - dns_config_result.Success
+      - dns_config_result.DnsServers | sort == dns_servers | sort
+    fail_msg: |
+      DNS configuration mismatch:
+      - Expected: {{ dns_servers | sort | join(', ') }}
+      - Configured: {{ dns_config_result.DnsServers | sort | join(', ') }}
+    success_msg: "DNS servers correctly configured: {{ dns_servers | join(', ') }}"

@@ -1,0 +1,23 @@
+---
+- name: Create the new Active Directory domain
+  microsoft.ad.domain:
+    create_dns_delegation: "{{ create_dns_delegation }}"
+    database_path: "{{ ad_database_path }}"
+    dns_domain_name: "{{ target_domain_name }}"
+    install_dns: "{{ install_dns }}"
+    domain_mode: "{{ domain_mode }}"
+    domain_netbios_name: "{{ domain_netbios_name }}"
+    forest_mode: "{{ forest_mode }}"
+    safe_mode_password: "{{ dsrm_password }}"
+    sysvol_path: "{{ ad_sysvol_path }}"
+    reboot: true
+  register: domain_creation_result
+
+- name: Display domain creation status
+  ansible.builtin.debug:
+    msg: "Domain {{ target_domain_name }} created successfully on {{ inventory_hostname }}"
+
+- name: Wait for domain controller services to stabilize
+  ansible.builtin.pause:
+    minutes: 5
+  when: domain_creation_result.reboot_required

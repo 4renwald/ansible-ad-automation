@@ -1,0 +1,12 @@
+---
+# Create Active Directory Organizational Units
+# Creates standard OU structure in the domain
+
+- name: Create Active Directory Organizational Units
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Placeholder for OU creation tasks
+      ansible.builtin.debug:
+        msg: 'OU creation tasks will be implemented here'

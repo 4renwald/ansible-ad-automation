@@ -1,0 +1,57 @@
+---
+- name: DNS client configuration tasks
+  become: false
+
+  block:
+    - name: Validate required DNS client configuration parameters
+      ansible.builtin.assert:
+        that:
+          - dns_servers is defined
+          - dns_servers | length > 0
+          - target_domain_nic is defined
+        fail_msg: |
+          DNS client configuration validation failed:
+          - dns_servers must be a non-empty list (current: {{ dns_servers | default('undefined') }})
+          - target_domain_nic must be defined (current: {{ target_domain_nic | default('undefined') }})
+        success_msg: "DNS client configuration parameters validated successfully"
+
+    - name: Display DNS client configuration to be applied
+      ansible.builtin.debug:
+        msg: |
+          Applying DNS client configuration:
+          - Network adapter: {{ target_domain_nic }}
+          - DNS servers: {{ dns_servers | join(', ') }}
+
+    - name: Configure DNS client settings on network adapter
+      ansible.windows.win_dns_client:
+        adapter_names: "{{ target_domain_nic }}"
+        ipv4_addresses: "{{ dns_servers }}"
+      register: dns_client_config
+
+    - name: Validate DNS configuration was applied
+      ansible.builtin.include_tasks: validate-dns-client.yml
+      when:
+        - validate_dns_config | bool
+        - dns_client_config is changed
+
+    - name: Display DNS client configuration status
+      ansible.builtin.debug:
+        msg: |
+          DNS client configuration completed successfully
+          Network adapter: {{ target_domain_nic }}
+          DNS servers: {{ dns_servers | join(', ') }}
+          Configuration changed: {{ dns_client_config is changed }}
+
+  rescue:
+    - name: Log DNS client configuration error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ DNS Client Configuration Failed
+          Host: {{ inventory_hostname }}
+          Adapter: {{ target_domain_nic }}
+          DNS Servers: {{ dns_servers | join(', ') }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail DNS client configuration with context
+      ansible.builtin.fail:
+        msg: "DNS client configuration failed on {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('Unknown error') }}"

@@ -1,0 +1,42 @@
+---
+# Domain Controllers Variables
+# Scope: All domain controllers across all domains
+# Purpose: Configuration settings specific to Active Directory domain controllers
+
+# Network Configuration
+# Default network adapter for DNS client configuration (use '*' for all adapters)
+target_domain_nic: "*"
+
+# NetBIOS name (short name) - automatically derived from first part of domain
+# Example: "example.local" → "EXAMPLE"
+# You can override this if you need a different NetBIOS name
+domain_netbios_name: "{{ target_domain_name.split('.')[0] | upper }}"
+
+# Active Directory Paths
+# These can be overridden in domain-specific or DC-specific group_vars
+ad_database_path: "C:\\Windows\\NTDS"
+ad_sysvol_path: "C:\\Windows\\SYSVOL"
+ad_log_path: "C:\\Windows\\NTDS\\logs"
+
+# External DNS Forwarders (Enterprise DNS Infrastructure)
+# These servers are queried for external DNS resolution by DC DNS servers
+dns_forwarders:
+  - "1.1.1.1"   # Primary DNS (Cloudflare)
+  - "1.1.1.3"   # Secondary DNS (Cloudflare)
+
+# DNS Validation Configuration (DC-specific)
+dns_validation:
+  # Maximum retry attempts for DNS resolution tests
+  max_retries: 5
+
+  # Delay between retry attempts (seconds)
+  retry_delay: 10
+
+  # Timeout for DNS queries (seconds)
+  query_timeout: 5
+
+  # Enable DNS suffix search list
+  use_suffix_search_list: true
+
+  # DNS registration settings
+  register_connections_suffix: true

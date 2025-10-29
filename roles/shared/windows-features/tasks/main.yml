@@ -1,0 +1,58 @@
+---
+- name: Windows features installation
+  become: false
+
+  block:
+    - name: Validate windows features list is provided
+      ansible.builtin.assert:
+        that:
+          - windows_features_to_install is defined
+          - windows_features_to_install | length > 0
+        fail_msg: "windows_features_to_install must be defined and contain at least one feature"
+        success_msg: "Windows features validated: {{ windows_features_to_install | join(', ') }}"
+
+    - name: Install Windows features
+      ansible.windows.win_feature:
+        name: "{{ item }}"
+        state: present
+        include_sub_features: true
+        include_management_tools: true
+      loop: "{{ windows_features_to_install }}"
+      register: features_install_result
+
+    - name: Check if any feature requires reboot
+      ansible.builtin.set_fact:
+        reboot_required: "{{ features_install_result.results | selectattr('reboot_required', 'defined') | selectattr('reboot_required', 'equalto', true) | list | length > 0 }}"
+
+    - name: Display feature installation status
+      ansible.builtin.debug:
+        msg: |
+          Windows features installation completed:
+          {% for result in features_install_result.results %}
+          - {{ result.item }}: {{ 'Installed' if result.changed else 'Already present' }}
+          {% endfor %}
+          Reboot required: {{ reboot_required }}
+
+    - name: Reboot server after feature installation if required
+      ansible.windows.win_reboot:
+        reboot_timeout: "{{ reboot_timeout }}"
+        shutdown_timeout: "{{ reboot_shutdown_timeout }}"
+      when:
+        - reboot_after_features | bool
+        - reboot_required | bool
+
+  rescue:
+    - name: Log Windows features installation error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ Windows Features Installation Failed
+          Host: {{ inventory_hostname }}
+          Features attempted: {{ windows_features_to_install | join(', ') }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail Windows features installation with context
+      ansible.builtin.fail:
+        msg: |
+          Windows features installation failed on {{ inventory_hostname }}.
+          Features: {{ windows_features_to_install | join(', ') }}
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}

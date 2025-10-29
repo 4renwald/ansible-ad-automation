@@ -1,0 +1,47 @@
+---
+- name: Validate DC services are running
+  ansible.windows.win_service_info:
+    name: "{{ item }}"
+  register: dc_services_status
+  loop:
+    - NTDS        # Active Directory Domain Services
+    - DNS         # DNS Server
+    - Netlogon    # Net Logon
+    - W32Time     # Windows Time
+  failed_when: dc_services_status.services[0].state != 'running'
+
+- name: Test replication with other domain controllers
+  ansible.windows.win_powershell:
+    script: |
+      try {
+        # Test AD replication status
+        $replTest = repadmin /replsummary
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Replication test failed"
+          exit 1
+        }
+
+        # Verify domain controller registration
+        $dcList = nltest /dclist:"{{ target_domain_name }}"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "DC list retrieval failed"
+          exit 1
+        }
+
+        Write-Output "✓ DC promotion validated successfully"
+        Write-Output "Replication Status:"
+        Write-Output $replTest
+        Write-Output "Domain Controllers:"
+        Write-Output $dcList
+
+        $Ansible.Changed = $false
+      } catch {
+        Write-Error "DC validation failed: $($_.Exception.Message)"
+        $Ansible.Failed = $true
+        exit 1
+      }
+  register: dc_validation
+
+- name: Display DC validation results
+  ansible.builtin.debug:
+    var: dc_validation.output

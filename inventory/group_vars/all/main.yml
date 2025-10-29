@@ -1,0 +1,21 @@
+---
+# Global Variables (All Hosts)
+# Scope: All hosts in deployment (DCs, member servers, workstations, etc.)
+# Purpose: Variables that apply to every host in the inventory
+
+# NTP Server List
+# Configure Windows Time Service with these NTP servers
+ntp_servers:
+  - "time.windows.com"      # Microsoft time server
+  - "time.nist.gov"         # NIST time server
+  - "pool.ntp.org"          # NTP pool
+
+# NTP Sync Interval (seconds)
+# How often to synchronize time (default: 3600 = 1 hour)
+ntp_sync_interval: 3600
+
+# NTP Validation
+# Validate NTP configuration after applying
+validate_ntp_config: true
+ntp_validation_retries: 3
+ntp_validation_delay: 10

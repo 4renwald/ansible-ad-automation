@@ -1,0 +1,25 @@
+---
+# Domain Controller promotion default variables
+
+# Domain configuration
+# Full domain name (FQDN) - typically overridden in group_vars/all/00-global.yml
+target_domain_name: "example.local"
+
+# First DC configuration (REQUIRED - must be set via AAP survey or group_vars)
+# first_dc_ip: "192.168.1.10"  # IP address of existing first DC
+
+# Network configuration
+# target_domain_nic: "Ethernet"  # Specify network adapter name if needed
+
+# Active Directory paths
+ad_database_path: "C:\\Windows\\NTDS"
+ad_sysvol_path: "C:\\Windows\\SYSVOL"
+ad_log_path: "C:\\Windows\\NTDS\\logs"
+
+# DNS forwarders - inherited from group_vars/all/01-dns-config.yml
+# No defaults here - use centralized configuration
+
+# Required variables (must be provided via AAP survey or credentials)
+# domain_admin_username: "{{ domain_admin_username }}"        # Domain admin for promotion
+# domain_admin_password: "{{ domain_admin_password }}"         # Domain admin password
+# dsrm_password: "{{ dsrm_password }}"                         # Directory Services Restore Mode password

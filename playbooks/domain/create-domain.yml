@@ -1,0 +1,45 @@
+---
+# Create new Active Directory domain and forest
+# This playbook orchestrates the complete process of creating a new AD domain
+# including Windows feature installation, domain creation, and DNS configuration
+
+- name: Create new Active Directory domain
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Install required Windows features for domain creation
+      ansible.builtin.include_role:
+        name: shared/windows-features
+        apply:
+          tags:
+            - windows-features
+      vars:
+        windows_features_to_install:
+          - AD-Domain-Services
+          - DNS
+          - RSAT-AD-Tools
+          - RSAT-AD-PowerShell
+          - RSAT-ADDS
+          - RSAT-DNS-Server
+          - RSAT-DFS-Mgmt-Con
+      tags:
+        - windows-features
+
+    - name: Create Active Directory domain
+      ansible.builtin.include_role:
+        name: domain/domain-creation
+        apply:
+          tags:
+            - domain-creation
+      tags:
+        - domain-creation
+
+    - name: Configure DNS forwarders on new domain controller
+      ansible.builtin.include_role:
+        name: domain-controllers/dns-forwarders
+        apply:
+          tags:
+            - dns-forwarders
+      tags:
+        - dns-forwarders

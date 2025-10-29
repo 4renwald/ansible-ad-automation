@@ -1,0 +1,12 @@
+---
+# Windows Features Shared Role Defaults
+# Purpose: Install Windows Server features
+
+# List of features to install - MUST be provided by calling role/playbook
+# This is intentionally empty to force explicit declaration
+windows_features_to_install: []
+
+# Reboot configuration
+reboot_after_features: true
+reboot_timeout: 600
+reboot_shutdown_timeout: 60

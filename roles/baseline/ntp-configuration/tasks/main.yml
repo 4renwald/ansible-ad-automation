@@ -1,0 +1,143 @@
+---
+- name: NTP configuration tasks
+  become: false
+  tags:
+    - time
+    - ntp
+
+  block:
+    - name: Validate required NTP configuration parameters
+      ansible.builtin.assert:
+        that:
+          - ntp_servers is defined
+          - ntp_servers | length > 0
+          - ntp_server_type is defined
+        fail_msg: |
+          NTP configuration validation failed:
+          - ntp_servers must be a non-empty list (current: {{ ntp_servers | default('undefined') }})
+          - ntp_server_type must be defined (current: {{ ntp_server_type | default('undefined') }})
+        success_msg: "NTP configuration parameters validated successfully"
+
+    - name: Display NTP configuration to be applied
+      ansible.builtin.debug:
+        msg: |
+          Applying NTP configuration:
+          - NTP servers: {{ ntp_servers | join(', ') }}
+          - Server type: {{ ntp_server_type }}
+          - Sync interval: {{ ntp_sync_interval }} seconds
+
+    - name: Ensure Windows Time service is running for configuration
+      ansible.windows.win_service:
+        name: W32Time
+        state: started
+      register: w32time_ensure
+      ignore_errors: true
+
+    - name: Configure NTP servers
+      ansible.windows.win_powershell:
+        script: |
+          try {
+            # Build NTP server list
+            $ntpServers = @('{{ ntp_servers | join("', '") }}')
+            $ntpServerString = $ntpServers -join ' '
+
+            # Configure NTP servers
+            w32tm /config /manualpeerlist:$ntpServerString /syncfromflags:manual /reliable:yes /update
+
+            # Set additional W32Time registry settings
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Parameters" `
+              -Name "Type" -Value "{{ ntp_server_type }}"
+
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Config" `
+              -Name "AnnounceFlags" -Value {{ ntp_announce_flags }}
+
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient" `
+              -Name "Enabled" -Value $(if ("{{ ntp_enable_client }}" -eq "True") { 1 } else { 0 })
+
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient" `
+              -Name "SpecialPollInterval" -Value {{ ntp_sync_interval }}
+
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Config" `
+              -Name "MaxPosPhaseCorrection" -Value {{ ntp_max_pos_phase_correction }}
+
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Config" `
+              -Name "MaxNegPhaseCorrection" -Value {{ ntp_max_neg_phase_correction }}
+
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Config" `
+              -Name "UpdateInterval" -Value {{ ntp_update_interval }}
+
+            @{
+              Success = $true
+              Message = "NTP configuration applied successfully"
+              NtpServers = $ntpServerString
+            } | ConvertTo-Json
+          } catch {
+            @{
+              Success = $false
+              Message = "Failed to configure NTP: $($_.Exception.Message)"
+            } | ConvertTo-Json
+          }
+      register: ntp_config_result
+
+    - name: Parse NTP configuration result
+      ansible.builtin.set_fact:
+        ntp_result: "{{ (ntp_config_result.output | select('search', '^\\{') | first) | from_json }}"
+
+    - name: Fail if NTP configuration failed
+      ansible.builtin.fail:
+        msg: "{{ ntp_result.Message }}"
+      when: not ntp_result.Success
+
+    - name: Restart Windows Time service to apply configuration
+      ansible.windows.win_service:
+        name: W32Time
+        state: restarted
+        start_mode: auto
+      register: w32time_restart
+
+    - name: Wait for Windows Time service to stabilize
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Force immediate time synchronization
+      ansible.windows.win_command: w32tm /resync /force
+      register: ntp_sync
+      ignore_errors: true
+
+    - name: Display NTP sync result
+      ansible.builtin.debug:
+        msg: |
+          NTP synchronization initiated
+          Result: {{ ntp_sync.stdout | default('No output') }}
+
+    - name: Validate NTP configuration
+      ansible.builtin.include_tasks: validate-ntp.yml
+      when: validate_ntp_config | bool
+
+    - name: Display NTP configuration status
+      ansible.builtin.debug:
+        msg: |
+          NTP configuration completed successfully
+          NTP servers: {{ ntp_servers | join(', ') }}
+          W32Time service: {{ w32time_restart.state }}
+          Configuration changed: {{ ntp_config_result is changed }}
+
+  rescue:
+    - name: Log NTP configuration error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ NTP Configuration Failed
+          Host: {{ inventory_hostname }}
+          NTP Servers: {{ ntp_servers | join(', ') }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Ensure W32Time service is started (cleanup attempt)
+      ansible.windows.win_service:
+        name: W32Time
+        state: started
+        start_mode: auto
+      failed_when: false
+
+    - name: Fail NTP configuration with context
+      ansible.builtin.fail:
+        msg: "NTP configuration failed on {{ inventory_hostname }}: {{ ansible_failed_result.msg | default('Unknown error') }}"

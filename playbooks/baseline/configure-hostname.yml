@@ -1,0 +1,12 @@
+---
+# Configure Windows server hostname
+# Sets the hostname based on inventory hostname (short name)
+
+- name: Configure server hostname
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Configure hostname from inventory
+      ansible.builtin.include_role:
+        name: baseline/hostname-configuration

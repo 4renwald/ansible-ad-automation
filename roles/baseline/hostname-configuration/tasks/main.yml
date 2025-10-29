@@ -1,0 +1,52 @@
+---
+- name: Hostname configuration tasks
+  become: false
+
+  block:
+    - name: Validate hostname parameter
+      ansible.builtin.assert:
+        that:
+          - hostname is defined
+          - hostname | length > 0
+          - hostname | length <= 15
+        fail_msg: |
+          Hostname validation failed:
+          - hostname must be defined and non-empty
+          - hostname must be 15 characters or less (current: {{ hostname | default('NOT DEFINED') }})
+        success_msg: "Hostname validated: {{ hostname }}"
+
+    - name: Display current and target hostname
+      ansible.builtin.debug:
+        msg: |
+          Current hostname: {{ ansible_hostname }}
+          Target hostname: {{ hostname }}
+
+    - name: Change the hostname
+      ansible.windows.win_hostname:
+        name: "{{ hostname }}"
+      register: hostname_change_result
+
+    - name: Reboot server to apply hostname change
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
+        post_reboot_delay: 30
+      when: hostname_change_result.reboot_required
+
+    - name: Display hostname change status
+      ansible.builtin.debug:
+        msg: "✓ Hostname changed to {{ hostname }} on {{ inventory_hostname }}"
+
+  rescue:
+    - name: Log hostname configuration error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ Hostname Configuration Failed
+          Host: {{ inventory_hostname }}
+          Target hostname: {{ hostname | default('NOT SET') }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail hostname configuration with context
+      ansible.builtin.fail:
+        msg: |
+          Hostname configuration failed on {{ inventory_hostname }}.
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}

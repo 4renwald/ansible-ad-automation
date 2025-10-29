@@ -1,0 +1,18 @@
+---
+# Additional Domain Controllers Variables
+# Scope: Additional DCs only
+# Purpose: Configuration specific to additional DCs joining the domain
+
+# First DC Configuration
+# IMPORTANT: This MUST be set in inventory or playbook vars
+# Example: first_dc_ip: "192.168.1.10"
+# first_dc_ip: undefined
+
+# NIC DNS Configuration
+# Configure NIC to use first DC (for domain resolution) plus external forwarders
+# NOTE: first_dc_ip must be defined in inventory or playbook vars
+# This is valid in the case that there is not an Enterprise DNS solution in place with the existing records for the domain.
+dns_servers:
+  - "{{ first_dc_ip }}"         # First DC for domain DNS resolution
+  - "{{ dns_forwarders[0] }}"   # First external DNS forwarder
+  - "{{ dns_forwarders[1] }}"   # Second external DNS forwarder

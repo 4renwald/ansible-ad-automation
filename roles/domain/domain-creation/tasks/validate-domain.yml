@@ -1,0 +1,33 @@
+---
+- name: Validate domain controller services are running
+  ansible.windows.win_service_info:
+    name: "{{ item }}"
+  register: dc_services_status
+  loop:
+    - NTDS
+    - DNS
+    - Netlogon
+    - W32Time
+  failed_when: dc_services_status.services[0].state != 'started'
+
+- name: Test domain connectivity
+  ansible.windows.win_powershell:
+    script: |
+      try {
+        $domain = Get-ADDomain -Current LocalComputer
+        Write-Output "Domain validation successful:"
+        Write-Output "  Domain: $($domain.DNSRoot)"
+        Write-Output "  NetBIOS: $($domain.NetBIOSName)"
+        Write-Output "  Forest: $($domain.Forest)"
+        Write-Output "  Functional Level: $($domain.DomainMode)"
+        $Ansible.Changed = $false
+      } catch {
+        Write-Error "Domain validation failed: $($_.Exception.Message)"
+        $Ansible.Failed = $true
+        exit 1
+      }
+  register: domain_validation
+
+- name: Display domain validation results
+  ansible.builtin.debug:
+    var: domain_validation.output

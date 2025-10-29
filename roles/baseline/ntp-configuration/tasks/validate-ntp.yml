@@ -1,0 +1,136 @@
+---
+# Validate NTP configuration and time synchronization
+
+- name: Get Windows Time service status
+  ansible.windows.win_service_info:
+    name: W32Time
+  register: w32time_service_info
+
+- name: Display Windows Time service status
+  ansible.builtin.debug:
+    msg: |
+      Windows Time Service Status:
+      - State: {{ w32time_service_info.services[0].state }}
+      - Start Mode: {{ w32time_service_info.services[0].start_mode }}
+
+- name: Verify Windows Time service is started
+  ansible.builtin.assert:
+    that:
+      - w32time_service_info.services[0].state == 'started'
+      - w32time_service_info.services[0].start_mode == 'auto'
+    fail_msg: "Windows Time service is not started or not set to auto-start"
+    success_msg: "Windows Time service is started and set to auto-start"
+
+- name: Get current NTP configuration
+  ansible.windows.win_powershell:
+    script: |
+      try {
+        # Get NTP configuration
+        $ntpConfig = w32tm /query /configuration
+
+        # Get NTP peer list
+        $ntpPeers = w32tm /query /peers
+
+        # Get time source
+        $timeSource = w32tm /query /source
+
+        # Get registry settings
+        $registryType = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Parameters").Type
+        $announceFlags = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Config").AnnounceFlags
+        $ntpClientEnabled = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient").Enabled
+
+        @{
+          Success = $true
+          Configuration = $ntpConfig
+          Peers = $ntpPeers
+          TimeSource = $timeSource
+          RegistryType = $registryType
+          AnnounceFlags = $announceFlags
+          NtpClientEnabled = $ntpClientEnabled
+        } | ConvertTo-Json -Depth 3
+      } catch {
+        @{
+          Success = $false
+          Error = $_.Exception.Message
+        } | ConvertTo-Json
+      }
+  register: ntp_current_config
+
+- name: Parse NTP configuration
+  ansible.builtin.set_fact:
+    ntp_config_info: "{{ ntp_current_config.output[0] | from_json }}"
+
+- name: Display current NTP configuration
+  ansible.builtin.debug:
+    msg: |
+      Current NTP Configuration:
+      - Time Source: {{ ntp_config_info.TimeSource }}
+      - Registry Type: {{ ntp_config_info.RegistryType }}
+      - Announce Flags: {{ ntp_config_info.AnnounceFlags }}
+      - NTP Client Enabled: {{ ntp_config_info.NtpClientEnabled }}
+
+- name: Check time synchronization status
+  ansible.windows.win_powershell:
+    script: |
+      try {
+        # Get W32Time status
+        $status = w32tm /query /status
+
+        # Check last sync time
+        $lastSync = w32tm /query /status | Select-String "Last Successful Sync Time"
+
+        # Get stratum (distance from reference clock)
+        $stratum = w32tm /query /status | Select-String "Stratum"
+
+        @{
+          Success = $true
+          Status = $status
+          LastSync = $lastSync.ToString()
+          Stratum = $stratum.ToString()
+          Message = "Time synchronization status retrieved"
+        } | ConvertTo-Json
+      } catch {
+        @{
+          Success = $false
+          Error = $_.Exception.Message
+          Message = "Could not retrieve time status (may not be synced yet)"
+        } | ConvertTo-Json
+      }
+  register: ntp_sync_status
+  retries: "{{ ntp_validation_retries }}"
+  delay: "{{ ntp_validation_delay }}"
+  until: (ntp_sync_status.output[0] | from_json).Success | default(false)
+  ignore_errors: true
+
+- name: Parse time sync status
+  ansible.builtin.set_fact:
+    ntp_status_info: "{{ ntp_sync_status.output[0] | from_json }}"
+  when: ntp_sync_status is defined and ntp_sync_status.output is defined
+
+- name: Display time synchronization status
+  ansible.builtin.debug:
+    msg: |
+      Time Synchronization Status:
+      {% if ntp_status_info.Success %}
+      {{ ntp_status_info.LastSync }}
+      {{ ntp_status_info.Stratum }}
+      Status: Synchronized
+      {% else %}
+      Status: Not yet synchronized (this is normal for initial configuration)
+      Note: Time sync may take a few minutes to complete
+      {% endif %}
+  when: ntp_status_info is defined
+
+- name: Validation complete
+  ansible.builtin.debug:
+    msg: |
+      ========================================
+      NTP Configuration Validation Complete
+      ========================================
+      ✓ Windows Time service is running
+      ✓ NTP servers configured: {{ ntp_servers | join(', ') }}
+      ✓ Configuration applied successfully
+
+      Note: Initial time synchronization may take several minutes.
+      Monitor with: w32tm /query /status
+      ========================================

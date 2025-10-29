@@ -1,0 +1,48 @@
+---
+- name: Domain Controller promotion tasks
+  become: false
+
+  block:
+    - name: Validate required DC promotion parameters
+      ansible.builtin.assert:
+        that:
+          - target_domain_name is defined
+          - target_domain_name | length > 0
+          - first_dc_ip is defined
+          - first_dc_ip | length > 0
+          - domain_admin_username is defined
+          - domain_admin_username | length > 0
+          - domain_admin_password is defined
+          - domain_admin_password | length > 0
+          - dsrm_password is defined
+          - dsrm_password | length > 0
+        fail_msg: |
+          DC promotion validation failed. Required variables:
+          - target_domain_name: {{ target_domain_name | default('NOT DEFINED') }}
+          - first_dc_ip: {{ first_dc_ip | default('NOT DEFINED') }}
+          - domain_admin_username: {{ domain_admin_username | default('NOT DEFINED') }}
+          - domain_admin_password: {{ '***DEFINED***' if domain_admin_password is defined else 'NOT DEFINED' }}
+          - dsrm_password: {{ '***DEFINED***' if dsrm_password is defined else 'NOT DEFINED' }}
+        success_msg: "DC promotion parameters validated successfully"
+
+    - name: Promote server to domain controller
+      ansible.builtin.include_tasks: promote-dc.yml
+
+    - name: Validate domain controller promotion
+      ansible.builtin.include_tasks: validate-dc.yml
+
+  rescue:
+    - name: Log DC promotion error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ Domain Controller Promotion Failed
+          Host: {{ inventory_hostname }}
+          Domain: {{ target_domain_name }}
+          First DC: {{ first_dc_ip | default('NOT SET') }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail DC promotion with context
+      ansible.builtin.fail:
+        msg: |
+          DC promotion failed on {{ inventory_hostname }} for domain {{ target_domain_name }}.
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}

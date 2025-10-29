@@ -1,0 +1,23 @@
+# Ansible-lint configuration
+---
+# Exclude paths
+exclude_paths:
+  - .venv/
+  - .ansible/
+  - examples/
+
+# Skip specific rules
+skip_list:
+  # Variable naming prefix rule is too strict for cross-role variables
+  # These variables are intentionally shared across roles
+  - var-naming[no-role-prefix]
+
+  # Allow role paths for internal project structure
+  # We use a clear hierarchical role organization
+  - role-name[path]
+
+# Enable offline mode (don't check for updates)
+offline: true
+
+# Use min profile as baseline
+profile: min

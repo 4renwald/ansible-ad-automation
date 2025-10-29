@@ -1,0 +1,64 @@
+---
+# NTP Configuration Default Variables
+# Purpose: Configure Windows Time Service (W32Time) with NTP servers
+#
+# Variables can be overridden in:
+#   - group_vars/all/02-ntp-config.yml (recommended - centralized configuration)
+#   - Playbook vars
+#
+# NOTE: NTP servers should be defined in group_vars/all/02-ntp-config.yml
+#       This file contains only behavior settings, not infrastructure configuration
+
+# NTP Server List
+# SHOULD BE DEFINED IN: group_vars/all/02-ntp-config.yml
+# Fallback default (should not be used in production):
+ntp_servers:
+  - "time.windows.com"
+  - "time.nist.gov"
+
+# NTP Server Type
+# Options: "NTP" (default), "NT5DS" (domain hierarchy for DCs), "AllSync"
+ntp_server_type: "NTP"
+
+# NTP Sync Interval
+# Interval in seconds between synchronization attempts (default: 3600 = 1 hour)
+ntp_sync_interval: 3600
+
+# Enable Special Poll Interval
+# Use special poll interval for more frequent initial sync (default: true)
+ntp_special_poll_interval: true
+
+# Maximum Positive Phase Correction
+# Maximum time correction in seconds (default: 54000 = 15 hours)
+ntp_max_pos_phase_correction: 54000
+
+# Maximum Negative Phase Correction
+# Maximum time correction in seconds (default: 54000 = 15 hours)
+ntp_max_neg_phase_correction: 54000
+
+# Update Interval
+# How often to update time in 100ns units (default: 100)
+ntp_update_interval: 100
+
+# Announce Flags
+# Time service announcement flags (default: 5)
+# 0 = Not a time server
+# 5 = Reliable time server
+# 10 = Always reliable time server
+ntp_announce_flags: 5
+
+# Enable NTP Client
+# Enable Windows Time Service as NTP client (default: true)
+ntp_enable_client: true
+
+# Validation Configuration
+validate_ntp_config: true
+
+# NTP validation timeout (seconds)
+ntp_validation_timeout: 30
+
+# Maximum retry attempts for NTP validation
+ntp_validation_retries: 3
+
+# Delay between retry attempts (seconds)
+ntp_validation_delay: 10

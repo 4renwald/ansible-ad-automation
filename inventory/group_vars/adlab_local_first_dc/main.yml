@@ -1,0 +1,36 @@
+---
+# First Domain Controller Variables
+# Scope: First DC only (creates new domain/forest)
+# Purpose: Configuration specific to the first DC in the domain
+
+# NIC DNS Configuration
+# Configure NIC to use loopback (for self-reference) plus external forwarders
+dns_servers:
+  - "127.0.0.1"                 # Loopback for self-reference after DC promotion
+  - "{{ dns_forwarders[0] }}"   # First external DNS forwarder
+  - "{{ dns_forwarders[1] }}"   # Second external DNS forwarder
+
+# DNS Role for First DC (deprecated - kept for compatibility)
+dns_role: first
+
+# Domain Forest Configuration
+create_new_forest: true
+domain_mode: "WinThreshold"  # Domain functional level - Windows Server 2016+
+forest_mode: "WinThreshold"  # Forest functional level - Windows Server 2016+
+
+# DNS Configuration
+install_dns: true
+create_dns_delegation: false
+
+# Database Paths (can override global defaults if needed)
+# ad_database_path: "D:\\NTDS"
+# ad_sysvol_path: "D:\\SYSVOL"
+# ad_log_path: "D:\\NTDS\\logs"
+
+# Organizational Unit Management
+create_ou_structure: true
+ou_template: "ous_structure.j2"
+
+# Additional First DC Responsibilities
+#run_security_scan: true
+#security_scan_tool: "pingcastle"

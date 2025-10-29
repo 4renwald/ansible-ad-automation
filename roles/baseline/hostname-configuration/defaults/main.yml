@@ -1,0 +1,11 @@
+---
+# Hostname configuration default variables
+
+# Target hostname for the server
+# Should be overridden at runtime or in inventory
+# Windows hostnames are limited to 15 characters
+hostname: "{{ inventory_hostname.split('.')[0] }}"
+
+# Reboot settings (defaults shown)
+reboot_timeout: 300         # Reboot timeout (seconds)
+post_reboot_delay: 30       # Wait time after reboot (seconds)

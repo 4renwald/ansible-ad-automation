@@ -1,0 +1,30 @@
+# Tier 0
+- name: Tier0
+  description: "Plan de contr�le identit�s & services critiques"
+  protect_from_deletion: true
+  path: "{{ domain_dc_path }}"
+
+- name: AdminAccounts
+  description: "Comptes administrateurs Tier 0"
+  protect_from_deletion: true
+  path: "OU=Tier0,{{ domain_dc_path }}"
+
+- name: Users
+  description: "Comptes humains T0 (Protected Users, AuthN Policy)"
+  protect_from_deletion: true
+  path: "OU=AdminAccounts,OU=Tier0,{{ domain_dc_path }}"
+
+- name: BreakGlass
+  description: "Comptes d'acc�s d'urgence (hautement contr�l�s)"
+  protect_from_deletion: true
+  path: "OU=AdminAccounts,OU=Tier0,{{ domain_dc_path }}"
+
+- name: PAW
+  description: "Workstations d'admin T0 (hardened)"
+  protect_from_deletion: true
+  path: "OU=Tier0,{{ domain_dc_path }}"
+
+- name: Groups
+  description: "Groupes Tier 0"
+  protect_from_deletion: true
+  path: "OU=Tier0,{{ domain_dc_path }}"

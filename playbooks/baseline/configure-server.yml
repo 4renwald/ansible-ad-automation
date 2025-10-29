@@ -1,0 +1,36 @@
+---
+# Baseline configuration orchestration
+# Orchestrates DNS client, time-sync, and account configuration
+# Tags use 'apply' parameter to properly inherit into included roles
+
+- name: Configure server baseline
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Include DNS client configuration
+      ansible.builtin.include_role:
+        name: baseline/dns-client-configuration
+        apply:
+          tags:
+            - dns-client
+      tags: 
+        - dns-client
+
+    - name: Include NTP configuration
+      ansible.builtin.include_role:
+        name: baseline/ntp-configuration
+        apply:
+          tags:
+            - ntp
+      tags: 
+        - ntp
+
+    - name: Include local Administrator password reset
+      ansible.builtin.include_role:
+        name: baseline/local-admin-password-reset
+        apply:
+          tags:
+            - local-admin-password
+      tags:
+        - local-admin-password

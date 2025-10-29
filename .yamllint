@@ -1,0 +1,48 @@
+# yamllint configuration
+# Used by pre-commit hooks and manual linting
+
+extends: default
+
+rules:
+  # Line length - allow longer lines for readability
+  line-length:
+    max: 160
+    level: warning
+
+  # Indentation - 2 spaces as per project standard
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+
+  # Document start - not required (allow --- to be optional)
+  document-start:
+    present: false
+
+  # Truthy values - allow yes/no/on/off
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+
+  # Brackets - allow both styles
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Braces - allow both styles  
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Empty values - allow null
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+ignore: |
+  group_vars/**/vault.yml
+  .github/
+  collections/

@@ -1,0 +1,80 @@
+# Pre-commit hooks for Ansible AD Automation
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Ansible Lint
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v24.9.2
+    hooks:
+      - id: ansible-lint
+        name: Ansible Lint
+        description: Run ansible-lint on playbooks and roles
+        entry: ansible-lint
+        language: python
+        files: \.(yaml|yml)$
+        exclude: |
+          (?x)^(
+            group_vars/.*/credentials\.yml|
+            .*\.example$
+          )$
+
+  # YAML Lint
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        name: YAML Lint
+        description: Check YAML syntax and style
+        args: [-c=.yamllint]
+        exclude: |
+          (?x)^(
+            group_vars/.*/credentials\.yml|
+            .*\.example$
+          )$
+
+  # General pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        description: Remove trailing whitespace
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        description: Ensure files end with newline
+      - id: check-yaml
+        name: Check YAML
+        description: Validate YAML syntax
+        args: [--allow-multiple-documents]
+        exclude: |
+          (?x)^(
+            group_vars/.*/credentials\.yml
+          )$
+      - id: check-added-large-files
+        name: Check for Large Files
+        description: Prevent large files from being committed
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+        name: Check for Merge Conflicts
+        description: Check for merge conflict markers
+      - id: detect-private-key
+        name: Detect Private Keys
+        description: Prevent committing private keys
+      - id: mixed-line-ending
+        name: Check Line Endings
+        description: Ensure consistent line endings
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: Detect Secrets
+        description: Detect secrets in code
+        args: ['--baseline', '.secrets.baseline']
+        exclude: |
+          (?x)^(
+            group_vars/.*/credentials\.yml\.example|
+            .*\.lock$
+          )$

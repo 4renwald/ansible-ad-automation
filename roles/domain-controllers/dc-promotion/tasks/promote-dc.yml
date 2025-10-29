@@ -1,0 +1,27 @@
+---
+- name: Promote server to Domain Controller
+  microsoft.ad.domain_controller:
+    install_dns: true
+    dns_domain_name: "{{ target_domain_name }}"
+    domain_admin_user: "{{ domain_admin_username }}"
+    domain_admin_password: "{{ domain_admin_password }}"
+    safe_mode_password: "{{ dsrm_password }}"
+    state: domain_controller
+    sysvol_path: "{{ ad_sysvol_path | default('C:\\Windows\\SYSVOL') }}"
+    database_path: "{{ ad_database_path | default('C:\\Windows\\NTDS') }}"
+    log_path: "{{ ad_log_path | default('C:\\Windows\\NTDS\\logs') }}"
+    reboot: true
+  register: dc_promotion
+
+- name: Display DC promotion status
+  ansible.builtin.debug:
+    msg: |
+      DC promotion completed
+      Domain: {{ target_domain_name }}
+      Host: {{ inventory_hostname }}
+      Reboot required: {{ dc_promotion.reboot_required }}
+
+- name: Wait for domain controller services to stabilize
+  ansible.builtin.pause:
+    minutes: 3
+  when: dc_promotion.reboot_required

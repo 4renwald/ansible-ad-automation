@@ -1,0 +1,66 @@
+---
+- name: User account management tasks
+  become: false
+
+  block:
+    - name: Validate required parameters
+      ansible.builtin.assert:
+        that:
+          - target_domain_name is defined
+          - target_domain_name | length > 0
+          - ad_user_accounts is defined
+          - ad_user_accounts | length > 0
+        fail_msg: |
+          User account management validation failed:
+          - target_domain_name must be defined (current: {{ target_domain_name | default('undefined') }})
+          - ad_user_accounts must be a non-empty list (current: {{ ad_user_accounts | default('undefined') }})
+        success_msg: "User account management parameters validated successfully"
+
+    - name: Create user accounts
+      microsoft.ad.user:
+        name: "{{ item.name }}"
+        sam_account_name: "{{ item.sam_account_name | default(omit) }}"
+        upn: "{{ item.upn | default(omit) }}"
+        firstname: "{{ item.firstname | default(omit) }}"
+        surname: "{{ item.surname | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        password: "{{ item.password }}"
+        enabled: "{{ item.enabled | default(default_user_settings.enabled) }}"
+        password_never_expires: "{{ item.password_never_expires | default(default_user_settings.password_never_expires) }}"
+        user_cannot_change_password: "{{ item.user_cannot_change_password | default(default_user_settings.user_cannot_change_password) }}"
+        password_expired: "{{ item.password_expired | default(default_user_settings.password_expired) }}"
+        email: "{{ item.email | default(omit) }}"
+        city: "{{ item.city | default(omit) }}"
+        company: "{{ item.company | default(omit) }}"
+        country: "{{ item.country | default(omit) }}"
+        path: "{{ item.path | default(omit) }}"
+        state: present
+        groups: "{{ item.groups | default(omit) }}"
+        update_password: "{{ item.update_password | default(default_user_settings.update_password) }}"
+      loop: "{{ ad_user_accounts }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: user_accounts_result
+
+    - name: Display user account creation summary
+      ansible.builtin.debug:
+        msg: |
+          User accounts processed: {{ user_accounts_result.results | length }}
+          {% for result in user_accounts_result.results %}
+          - {{ result.item.name }}: {{ 'Created' if result is changed else 'Already exists' }}
+          {% endfor %}
+
+  rescue:
+    - name: Log user account management error details
+      ansible.builtin.debug:
+        msg: |
+          ❌ User Account Management Failed
+          Host: {{ inventory_hostname }}
+          Domain: {{ target_domain_name }}
+          Error: {{ ansible_failed_result.msg | default('No error message') }}
+
+    - name: Fail user account management with context
+      ansible.builtin.fail:
+        msg: |
+          User account management failed on {{ inventory_hostname }} for domain {{ target_domain_name }}.
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}

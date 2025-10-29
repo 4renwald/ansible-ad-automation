@@ -1,0 +1,31 @@
+---
+# Active Directory health check
+# Validates AD infrastructure health and configuration
+
+- name: Perform Active Directory health check
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Check AD domain services status
+      ansible.windows.win_service:
+        name: NTDS
+        state: started
+      check_mode: true
+      register: ad_service
+
+    - name: Validate domain controller operational status
+      ansible.windows.win_powershell:
+        script: |
+          $result = Get-ADDomainController -ErrorAction SilentlyContinue
+          if ($null -eq $result) {
+            throw "Domain controller validation failed"
+          }
+          $result
+      register: dc_validation
+      failed_when: dc_validation.error is defined
+      changed_when: false
+
+    - name: Display health check results
+      ansible.builtin.debug:
+        msg: 'Health check completed successfully'

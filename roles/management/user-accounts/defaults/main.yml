@@ -1,0 +1,26 @@
+---
+# User Account Management Default Variables
+# Purpose: Create and manage Active Directory user accounts
+
+# List of user accounts to create
+# Format:
+# ad_user_accounts:
+#   - name: "user1"
+#     upn: "user1@domain.local"
+#     firstname: "First"
+#     surname: "Last"
+#     password: "P@ssw0rd"
+#     enabled: true
+#     password_never_expires: false
+#     groups:
+#       - "Domain Users"
+ad_user_accounts: []
+
+# Default user account settings
+# These are applied when not specified per-user
+default_user_settings:
+  password_never_expires: false
+  user_cannot_change_password: false
+  password_expired: false
+  enabled: true
+  update_password: "when_changed"
